@@ -1,6 +1,14 @@
 package anki
 
-func NewNote(front, back string, tags []string, audio, video, picture []*NoteMedia) *Note {
+func NewNote(front, back string, tags []string) *Note {
+	noteOptions := &noteOptions{
+		AllowDuplicate: false,
+		DuplicateScope: "deck",
+		DuplicateScopeOptions: &duplicateScopeOptions{
+			DeckName: deckName,
+		},
+	}
+
 	return &Note{
 		DeckName:  deckName,
 		ModelName: modelName,
@@ -8,10 +16,8 @@ func NewNote(front, back string, tags []string, audio, video, picture []*NoteMed
 			Front: front,
 			Back:  back,
 		},
+		Options: noteOptions,
 		Tags:    tags,
-		Audio:   audio,
-		Video:   video,
-		Picture: picture,
 	}
 }
 
@@ -19,12 +25,23 @@ type Note struct {
 	DeckName  string       `json:"deckName"`
 	ModelName string       `json:"modelName"`
 	Fields    noteFields   `json:"fields"`
+	Options   *noteOptions `json:"options,omitempty"`
 	Tags      []string     `json:"tags,omitempty"`
 	Audio     []*NoteMedia `json:"audio,omitempty"`
 	Video     []*NoteMedia `json:"video,omitempty"`
 	Picture   []*NoteMedia `json:"picture,omitempty"`
 
-	CanAdd, Added bool
+	CanAdd bool `json:"-"`
+}
+
+type noteOptions struct {
+	AllowDuplicate        bool                   `json:"allowDuplicate"`
+	DuplicateScope        string                 `json:"duplicateScope"`
+	DuplicateScopeOptions *duplicateScopeOptions `json:"duplicateScopeOptions"`
+}
+
+type duplicateScopeOptions struct {
+	DeckName string `json:"deckName"`
 }
 
 type noteFields struct {

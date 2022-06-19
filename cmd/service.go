@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ezio1119/add-anki-flashcards-with-weblio/anki"
@@ -13,62 +14,46 @@ import (
 
 func addWords(ctx context.Context, words []string) error {
 
-	notes := make([]*anki.Note, len(words))
-
-	for i, w := range words {
-
-		note := anki.NewNote(w, "", nil, nil, nil, nil)
-		notes[i] = note
-	}
-
-	if err := anki.CanAddNotes(ctx, notes); err != nil {
-		return err
-	}
-
-	canAddNotes := []*anki.Note{}
-	for _, n := range notes {
-		if n.CanAdd {
-			canAddNotes = append(canAddNotes, n)
-		}
-	}
-
 	wg := errgroup.Group{}
 	wg.SetLimit(10)
 
-	filledNotes := []*anki.Note{}
+	notes := []*anki.Note{}
 
-	for i, n := range canAddNotes {
+	for i, w := range words {
 		i := i
-		n := n
+		w := w
+
 		wg.Go(func() error {
 			ctx, cancel := context.WithTimeout(ctx, time.Microsecond*5)
 			defer cancel()
 
-			result, err := queryWordWeblio(ctx, n.Fields.Front)
+			result, err := queryWordWeblio(ctx, w)
 			if err != nil {
 				return err
 			}
 
-			n.Fields.Front = result.Query
-			n.Fields.Back = result.Description
+			front := result.Query
+			back := strings.TrimSpace(result.Description)
+			tags := []string{}
+			if result.Level != 0 {
+				tags = append(tags, strconv.Itoa(result.Level))
+			}
 
-			level := strconv.Itoa(result.Level)
-			n.Tags = append(n.Tags, level)
+			note := anki.NewNote(front, back, tags)
 
 			if result.AudioURL != "" {
 				audio := &anki.NoteMedia{
 					URL:      result.AudioURL,
-					Filename: n.Fields.Front,
+					Filename: front,
 					Fields:   []string{"Front"},
 				}
 
-				n.Audio = append(n.Audio, audio)
+				note.Audio = append(note.Audio, audio)
 			}
 
-			filledNotes = append(filledNotes, n)
+			notes = append(notes, note)
 
-			fmt.Printf("weblio %d/%d\n", i+1, len(canAddNotes))
-
+			fmt.Printf("progress on weblio %d/%d\n", i+1, len(words))
 			return nil
 		})
 	}
@@ -77,11 +62,20 @@ func addWords(ctx context.Context, words []string) error {
 		return err
 	}
 
-	if err := addNotesAnki(ctx, filledNotes); err != nil {
+	newNotes, err := removeAnkiDupNotes(ctx, notes)
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("success: %d: canAdd: %d: received: %d\n", len(filledNotes), len(canAddNotes), len(words))
+	if err := addNotesAnki(ctx, newNotes); err != nil {
+		return err
+	}
+
+	fmt.Printf("added: %d: duplicated: %d: received: %d \n\n", len(newNotes), len(words)-len(newNotes), len(words))
+
+	for _, n := range notes {
+		fmt.Printf("%s: %s\n", n.Fields.Front, n.Fields.Back)
+	}
 
 	return nil
 }
@@ -92,8 +86,34 @@ func queryWordWeblio(ctx context.Context, word string) (*weblio.QueryResult, err
 		return nil, err
 	}
 
-	// fmt.Printf("%#v\n", result)
 	return result, nil
+}
+
+func removeAnkiDupNotes(ctx context.Context, notes []*anki.Note) ([]*anki.Note, error) {
+	if err := anki.CanAddNotes(ctx, notes); err != nil {
+		return nil, err
+	}
+
+	newNotes := []*anki.Note{}
+
+	for _, n := range notes {
+		if n.CanAdd {
+
+			wordWithAudio := fmt.Sprintf("%s[sound:%s]", n.Fields.Front, n.Fields.Front)
+			noteWithAudio := anki.NewNote(wordWithAudio, "", nil)
+
+			if err := anki.CanAddNotes(ctx, []*anki.Note{noteWithAudio}); err != nil {
+				return nil, err
+			}
+
+			if noteWithAudio.CanAdd {
+				newNotes = append(newNotes, n)
+			}
+		}
+
+	}
+
+	return newNotes, nil
 }
 
 func addNotesAnki(ctx context.Context, notes []*anki.Note) error {
