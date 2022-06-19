@@ -6,5 +6,5 @@ You must install anki and the anki-connect plugin before using it.
 ## Usage
 
 ```bash
-./bin/addanki word
+./bin/addanki word word2
 ```
