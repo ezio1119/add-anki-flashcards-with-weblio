@@ -1,7 +1,7 @@
 # add-anki-flashcards-with-weblio
 
 CLI to add flashcards translated by weblio to anki.<br>
-You must install anki and the anki-connect plugin before using it.<br>
+You **must** install [**anki**](https://apps.ankiweb.net/) and the [**anki-connect**](https://ankiweb.net/shared/info/2055492159) plugin before using it.<br>
 Duplicates will not be registered.<br>
 A description is also output as shown below.
 
