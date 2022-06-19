@@ -1,2 +1,3 @@
 install:
-	go build -o ${GOPATH}/bin/addanki
+	go build -o bin/addanki
+	cp bin/addanki ${GOPATH}/bin/addanki
