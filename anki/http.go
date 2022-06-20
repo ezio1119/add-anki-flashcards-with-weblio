@@ -22,8 +22,8 @@ type requestBody[T params] struct {
 }
 
 type responseBody struct {
-	Result interface{} `json:"result"`
-	Error  *string     `json:"error"`
+	Result json.RawMessage `json:"result"`
+	Error  *string         `json:"error"`
 }
 
 func newRequestBody[T params](action string, params *T) *requestBody[T] {

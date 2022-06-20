@@ -8,18 +8,41 @@ import (
 	"time"
 
 	"github.com/ezio1119/add-anki-flashcards-with-weblio/anki"
+	"github.com/ezio1119/add-anki-flashcards-with-weblio/util"
 	"github.com/ezio1119/add-anki-flashcards-with-weblio/weblio"
 	"golang.org/x/sync/errgroup"
 )
 
 func addWords(ctx context.Context, words []string) error {
+	existsNotes, err := findExistsNotesFromWords(ctx, words)
+	if err != nil {
+		return err
+	}
+
+	existsWords := existsNotes.ListWords()
+	notExistsWords := make([]string, 0, len(words)-len(existsWords))
+
+	for _, w := range words {
+		var exists bool
+
+		for _, wExists := range existsWords {
+			if wExists == w {
+				exists = true
+			}
+		}
+
+		if !exists {
+			notExistsWords = append(notExistsWords, w)
+		}
+	}
 
 	wg := errgroup.Group{}
 	wg.SetLimit(10)
 
-	notes := []*anki.Note{}
+	newNotes := []*anki.Note{}
+	failedQueryWords := []string{}
 
-	for i, w := range words {
+	for i, w := range notExistsWords {
 		i := i
 		w := w
 
@@ -29,7 +52,9 @@ func addWords(ctx context.Context, words []string) error {
 
 			result, err := queryWordWeblio(ctx, w)
 			if err != nil {
-				return err
+				fmt.Printf("addWords: failed query %s\n", w)
+				failedQueryWords = append(failedQueryWords, w)
+				return nil
 			}
 
 			front := result.Query
@@ -51,9 +76,9 @@ func addWords(ctx context.Context, words []string) error {
 				note.Audio = append(note.Audio, audio)
 			}
 
-			notes = append(notes, note)
+			newNotes = append(newNotes, note)
 
-			fmt.Printf("progress on weblio %d/%d\n", i+1, len(words))
+			fmt.Printf("progress on weblio %d/%d\n", i+1, len(notExistsWords))
 			return nil
 		})
 	}
@@ -62,22 +87,57 @@ func addWords(ctx context.Context, words []string) error {
 		return err
 	}
 
-	newNotes, err := removeAnkiDupNotes(ctx, notes)
-	if err != nil {
-		return err
-	}
+	// newNotes, err := removeAnkiDupNotes(ctx, notes)
+	// if err != nil {
+	// 	return err
+	// }
 
 	if err := addNotesAnki(ctx, newNotes); err != nil {
 		return err
 	}
 
-	fmt.Printf("added: %d: duplicated: %d: received: %d \n\n", len(newNotes), len(words)-len(newNotes), len(words))
+	fmt.Printf("added: %d: duplicated: %d: failedQuery: %d: received: %d \n\n", len(newNotes), len(existsNotes), len(failedQueryWords), len(words))
 
-	for _, n := range notes {
+	for _, n := range existsNotes {
+		fmt.Printf("%s: %s\n", n.Fields.Front, n.Fields.Back)
+	}
+
+	for _, n := range newNotes {
 		fmt.Printf("%s: %s\n", n.Fields.Front, n.Fields.Back)
 	}
 
 	return nil
+}
+
+func findExistsNotesFromWords(ctx context.Context, words []string) (anki.Notes, error) {
+	noteIDs, err := anki.FindNotes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	allNotes, err := anki.NotesInfo(ctx, noteIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// ankiに登録されてるのは出力し、されてないものはweblioに投げる
+	existsNotes := allNotes.FindByWords(words)
+	for _, n := range existsNotes {
+		fmt.Printf("%#v\n", n)
+	}
+
+	for _, w := range words {
+		wordWithAudio := util.AddAudioToWord(w)
+
+		existsNote := allNotes.GetByWord(wordWithAudio)
+
+		if existsNote != nil {
+			existsNote.Fields.Front = w
+			existsNotes = append(existsNotes, existsNote)
+		}
+	}
+
+	return existsNotes, nil
 }
 
 func queryWordWeblio(ctx context.Context, word string) (*weblio.QueryResult, error) {
@@ -97,16 +157,16 @@ func removeAnkiDupNotes(ctx context.Context, notes []*anki.Note) ([]*anki.Note, 
 	newNotes := []*anki.Note{}
 
 	for _, n := range notes {
-		if n.CanAdd {
+		if !n.Exists {
 
-			wordWithAudio := fmt.Sprintf("%s[sound:%s]", n.Fields.Front, n.Fields.Front)
+			wordWithAudio := util.AddAudioToWord(n.Fields.Front)
 			noteWithAudio := anki.NewNote(wordWithAudio, "", nil)
 
 			if err := anki.CanAddNotes(ctx, []*anki.Note{noteWithAudio}); err != nil {
 				return nil, err
 			}
 
-			if noteWithAudio.CanAdd {
+			if !noteWithAudio.Exists {
 				newNotes = append(newNotes, n)
 			}
 		}
