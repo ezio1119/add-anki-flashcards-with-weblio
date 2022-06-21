@@ -87,11 +87,6 @@ func addWords(ctx context.Context, words []string) error {
 		return err
 	}
 
-	// newNotes, err := removeAnkiDupNotes(ctx, notes)
-	// if err != nil {
-	// 	return err
-	// }
-
 	if err := addNotesAnki(ctx, newNotes); err != nil {
 		return err
 	}
