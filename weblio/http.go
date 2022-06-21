@@ -30,12 +30,17 @@ func Query(ctx context.Context, query string) (*QueryResult, error) {
 	} else {
 		return nil, fmt.Errorf("weblio: Query: failed get query: %s", query)
 	}
-
+	//
 	descElem := htmlquery.FindOne(doc, "//*[@id=\"summary\"]/div[2]/p/span[2]")
 	if descElem != nil {
 		result.Description = htmlquery.InnerText(descElem)
 	} else {
-		return nil, fmt.Errorf("weblio: Query: failed get description: %s", query)
+		descElem = htmlquery.FindOne(doc, "//*[@id=\"summary\"]/div[2]/p[2]/span")
+		if descElem != nil {
+			result.Description = htmlquery.InnerText(descElem)
+		} else {
+			return nil, fmt.Errorf("weblio: Query: failed get description: %s", query)
+		}
 	}
 
 	audioElem := htmlquery.FindOne(doc, "//*[@id=\"summary\"]/table[1]/tbody/tr/td[2]/table/tbody/tr[1]/td[1]/i/audio/source")

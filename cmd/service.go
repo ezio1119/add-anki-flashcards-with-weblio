@@ -14,6 +14,10 @@ import (
 )
 
 func addWords(ctx context.Context, words []string) error {
+	for i, n := range words {
+		words[i] = strings.ToLower(n)
+	}
+
 	existsNotes, err := findExistsNotesFromWords(ctx, words)
 	if err != nil {
 		return err
