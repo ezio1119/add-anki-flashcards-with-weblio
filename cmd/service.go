@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +12,8 @@ import (
 	"github.com/ezio1119/add-anki-flashcards-with-weblio/anki"
 	"github.com/ezio1119/add-anki-flashcards-with-weblio/util"
 	"github.com/ezio1119/add-anki-flashcards-with-weblio/weblio"
+	"github.com/hajimehoshi/go-mp3"
+	"github.com/hajimehoshi/oto"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -97,13 +101,8 @@ func addWords(ctx context.Context, words []string) error {
 
 	fmt.Printf("added: %d: duplicated: %d: failedQuery: %d: received: %d \n\n", len(newNotes), len(existsNotes), len(failedQueryWords), len(words))
 
-	for _, n := range existsNotes {
-		fmt.Printf("%s: %s\n", n.Fields.Front, n.Fields.Back)
-	}
-
-	for _, n := range newNotes {
-		fmt.Printf("%s: %s\n", n.Fields.Front, n.Fields.Back)
-	}
+	outputNotes(existsNotes)
+	outputNotes(newNotes)
 
 	return nil
 }
@@ -192,6 +191,48 @@ func addNotesAnki(ctx context.Context, notes []*anki.Note) error {
 	if err := anki.Multi(ctx, multiParams); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func outputNotes(notes anki.Notes) {
+	for _, n := range notes {
+		fmt.Printf("%s: %s\n", n.Fields.Front, n.Fields.Back)
+
+		// if len(n.Audio) == 1 {
+		// 	if err := playSoundFromURL(n.Audio[0].URL); err != nil {
+		// 		fmt.Printf("addWords: playSoundFromURL: failed tp play '%s' sound: %s\n", n.Fields.Front, err)
+		// 	}
+		// }
+	}
+}
+
+func playSoundFromURL(url string) error {
+	res, err := http.DefaultClient.Get(url)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	d, err := mp3.NewDecoder(res.Body)
+	if err != nil {
+		return err
+	}
+
+	c, err := oto.NewContext(d.SampleRate(), 2, 2, 8182)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	p := c.NewPlayer()
+	defer p.Close()
+
+	if _, err := io.Copy(p, d); err != nil {
+		return err
+	}
+
+	time.Sleep(time.Second)
 
 	return nil
 }
