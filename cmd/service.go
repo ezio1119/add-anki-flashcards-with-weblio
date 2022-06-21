@@ -120,9 +120,6 @@ func findExistsNotesFromWords(ctx context.Context, words []string) (anki.Notes, 
 
 	// ankiに登録されてるのは出力し、されてないものはweblioに投げる
 	existsNotes := allNotes.FindByWords(words)
-	for _, n := range existsNotes {
-		fmt.Printf("%#v\n", n)
-	}
 
 	for _, w := range words {
 		wordWithAudio := util.AddAudioToWord(w)
