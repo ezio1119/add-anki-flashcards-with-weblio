@@ -95,7 +95,7 @@ func (notes Notes) ListWords() []string {
 
 type Action struct {
 	Action string      `json:"action"`
-	Params interface{} `json:"params"`
+	Params interface{} `json:"params,omitempty"`
 }
 
 type FindNotesParams struct {
