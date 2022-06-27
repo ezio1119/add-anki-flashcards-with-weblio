@@ -95,8 +95,10 @@ func addWords(ctx context.Context, words []string) error {
 		return err
 	}
 
-	if err := addNotesAnki(ctx, newNotes); err != nil {
-		return err
+	if len(newNotes) != 0 {
+		if err := addNotesAnki(ctx, newNotes); err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("added: %d: duplicated: %d: failedQuery: %d: received: %d \n\n", len(newNotes), len(existsNotes), len(failedQueryWords), len(words))
