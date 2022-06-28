@@ -86,7 +86,8 @@ func addWords(ctx context.Context, words []string) error {
 
 			newNotes = append(newNotes, note)
 
-			fmt.Printf("progress on weblio %d/%d\n", i+1, len(notExistsWords))
+			fmt.Printf("querying weblio... %d/%d\n", i+1, len(notExistsWords))
+
 			return nil
 		})
 	}
