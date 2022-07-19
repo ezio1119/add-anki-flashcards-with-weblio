@@ -22,7 +22,17 @@ func addWords(ctx context.Context, words []string) error {
 		words[i] = strings.ToLower(n)
 	}
 
-	existsNotes, err := findExistsNotesFromWords(ctx, words)
+	noteIDs, err := anki.FindNotes(ctx)
+	if err != nil {
+		return err
+	}
+
+	allNotes, err := anki.NotesInfo(ctx, noteIDs)
+	if err != nil {
+		return err
+	}
+
+	existsNotes, err := findExistsNotesFromWords(ctx, allNotes, words)
 	if err != nil {
 		return err
 	}
@@ -58,7 +68,7 @@ func addWords(ctx context.Context, words []string) error {
 			ctx, cancel := context.WithTimeout(ctx, time.Microsecond*5)
 			defer cancel()
 
-			result, err := queryWordWeblio(ctx, w)
+			result, err := weblio.Query(ctx, w)
 			if err != nil {
 				fmt.Printf("addWords: failed query %s\n", w)
 				failedQueryWords = append(failedQueryWords, w)
@@ -109,24 +119,13 @@ func addWords(ctx context.Context, words []string) error {
 	return nil
 }
 
-func findExistsNotesFromWords(ctx context.Context, words []string) (anki.Notes, error) {
-	noteIDs, err := anki.FindNotes(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	allNotes, err := anki.NotesInfo(ctx, noteIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	// ankiに登録されてるのは出力し、されてないものはweblioに投げる
-	existsNotes := allNotes.FindByWords(words)
+func findExistsNotesFromWords(ctx context.Context, notes anki.Notes, words []string) (anki.Notes, error) {
+	existsNotes := notes.FindByWords(words)
 
 	for _, w := range words {
 		wordWithAudio := util.AddAudioToWord(w)
 
-		existsNote := allNotes.GetByWord(wordWithAudio)
+		existsNote := notes.GetByWord(wordWithAudio)
 
 		if existsNote != nil {
 			existsNote.Fields.Front = w
@@ -135,15 +134,6 @@ func findExistsNotesFromWords(ctx context.Context, words []string) (anki.Notes, 
 	}
 
 	return existsNotes, nil
-}
-
-func queryWordWeblio(ctx context.Context, word string) (*weblio.QueryResult, error) {
-	result, err := weblio.Query(ctx, word)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 func removeAnkiDupNotes(ctx context.Context, notes []*anki.Note) ([]*anki.Note, error) {
