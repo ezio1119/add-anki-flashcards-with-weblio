@@ -12,7 +12,10 @@ func main() {
 	// if err := cmd.RunImportCSV(ctx, "words.csv"); err != nil {
 	// 	log.Fatal(err)
 	// }
-	if err := cmd.RunCLI(ctx); err != nil {
+	if err := cmd.RunReQueryWeblio(ctx); err != nil {
 		log.Fatal(err)
 	}
+	// if err := cmd.RunCLI(ctx); err != nil {
+	// 	log.Fatal(err)
+	// }
 }

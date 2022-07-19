@@ -143,8 +143,9 @@ type canAddNotesParams struct {
 
 type updateNoteFieldsParams struct {
 	Note *struct {
-		ID     NoteID      `json:"id"`
-		Fields *noteFields `json:"fields"`
+		ID     NoteID       `json:"id"`
+		Fields *noteFields  `json:"fields"`
+		Audio  []*noteMedia `json:"audio"`
 	} `json:"note"`
 }
 

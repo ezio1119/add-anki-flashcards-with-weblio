@@ -71,17 +71,17 @@ func Query(ctx context.Context, query string) (*QueryResult, error) {
 	}
 
 	if r.AudioURL = getAudioURL(doc); r.AudioURL == "" {
-		fmt.Printf("weblio: Query: failed get audioURL: %s", r.Query)
+		// fmt.Printf("weblio: Query: failed get audioURL: %s\n", r.Query)
 	}
 
 	var err error
 	r.Level, err = getLevel(doc)
 	if err != nil || r.Level == 0 {
-		fmt.Printf("weblio: Query: failed get level: %s: %s", r.Query, err)
+		// fmt.Printf("weblio: Query: failed get level: %s: %s\n", r.Query, err)
 	}
 
 	if r.Examples = getExamples(doc); len(r.Examples) == 0 {
-		fmt.Printf("weblio: Query: failed get example: %s", r.Query)
+		// fmt.Printf("weblio: Query: failed get example: %s\n", r.Query)
 	}
 
 	return r, nil

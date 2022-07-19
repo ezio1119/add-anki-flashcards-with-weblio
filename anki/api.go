@@ -11,7 +11,6 @@ func FindNotes(ctx context.Context) ([]NoteID, error) {
 
 	res, err := requestAPI(ctx, "findNotes", &findNotesParams{Query: query})
 	if err != nil {
-		fmt.Println("aa")
 		return nil, err
 	}
 
@@ -39,7 +38,7 @@ func NotesInfo(ctx context.Context, noteIDs []NoteID) (Notes, error) {
 
 	for i, r := range result {
 		note := NewNote(r.Fields.Front.Value, r.Fields.Back.Value, r.Tags, r.Fields.Example.Value)
-
+		note.NoteID = r.NoteID
 		note.Exists = true
 		notes[i] = note
 	}
@@ -85,4 +84,21 @@ func CanAddNotes(ctx context.Context, notes Notes) error {
 	}
 
 	return nil
+}
+
+func UpdateNoteFields(ctx context.Context, note *Note) error {
+	params := &updateNoteFieldsParams{
+		Note: &struct {
+			ID     NoteID       "json:\"id\""
+			Fields *noteFields  "json:\"fields\""
+			Audio  []*noteMedia "json:\"audio\""
+		}{
+			ID:     note.NoteID,
+			Fields: note.Fields,
+			Audio:  note.Audio,
+		},
+	}
+
+	_, err := requestAPI(ctx, "updateNoteFields", params)
+	return err
 }
