@@ -12,10 +12,11 @@ require (
 require (
 	github.com/antchfx/xpath v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/google/go-cmp v0.5.8
 	golang.org/x/exp/shiny v0.0.0-20220613132600-b0d781184e0d // indirect
 	golang.org/x/image v0.0.0-20220617043117-41969df76e82 // indirect
 	golang.org/x/mobile v0.0.0-20220518205345-8578da9835fd // indirect
-	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9 // indirect
+	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9
 	golang.org/x/sys v0.0.0-20220615213510-4f61da869c0c // indirect
 	golang.org/x/text v0.3.7 // indirect
 )

@@ -66,13 +66,12 @@ func addWords(ctx context.Context, words []string) error {
 			}
 
 			front := result.Query
-			back := strings.TrimSpace(result.Description)
 			tags := []string{}
 			if result.Level != 0 {
 				tags = append(tags, strconv.Itoa(result.Level))
 			}
 
-			note := anki.NewNote(front, back, tags)
+			note := anki.NewNote(front, result.Description, tags)
 
 			if result.AudioURL != "" {
 				audio := &anki.NoteMedia{
