@@ -66,12 +66,12 @@ func addWords(ctx context.Context, words []string) error {
 			}
 
 			front := result.Query
-			tags := []string{}
+			var tags []string
 			if result.Level != 0 {
 				tags = append(tags, strconv.Itoa(result.Level))
 			}
 
-			note := anki.NewNote(front, result.Description, tags)
+			note := anki.NewNote(front, result.Description, tags, result.Examples.String())
 
 			if result.AudioURL != "" {
 				audio := &anki.NoteMedia{
@@ -157,7 +157,7 @@ func removeAnkiDupNotes(ctx context.Context, notes []*anki.Note) ([]*anki.Note, 
 		if !n.Exists {
 
 			wordWithAudio := util.AddAudioToWord(n.Fields.Front)
-			noteWithAudio := anki.NewNote(wordWithAudio, "", nil)
+			noteWithAudio := anki.NewNote(wordWithAudio, "", nil, "")
 
 			if err := anki.CanAddNotes(ctx, []*anki.Note{noteWithAudio}); err != nil {
 				return nil, err

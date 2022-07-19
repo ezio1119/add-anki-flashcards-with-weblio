@@ -35,12 +35,11 @@ func NotesInfo(ctx context.Context, noteIDs []NoteID) (Notes, error) {
 		return nil, err
 	}
 
-	// result := res.Result.()
 	notes := make(Notes, len(notesInfo))
 
 	for i, n := range notesInfo {
 
-		note := NewNote(n.Fields.Front.Value, n.Fields.Back.Value, n.Tags)
+		note := NewNote(n.Fields.Front.Value, n.Fields.Back.Value, n.Tags, n.Fields.Example.Value)
 		note.Exists = true
 		notes[i] = note
 	}

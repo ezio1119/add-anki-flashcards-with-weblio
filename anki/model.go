@@ -1,6 +1,6 @@
 package anki
 
-func NewNote(front, back string, tags []string) *Note {
+func NewNote(front, back string, tags []string, example string) *Note {
 	noteOptions := &noteOptions{
 		AllowDuplicate: false,
 		DuplicateScope: "deck",
@@ -13,8 +13,9 @@ func NewNote(front, back string, tags []string) *Note {
 		DeckName:  deckName,
 		ModelName: modelName,
 		Fields: &noteFields{
-			Front: front,
-			Back:  back,
+			Front:   front,
+			Back:    back,
+			Example: example,
 		},
 		Options: noteOptions,
 		Tags:    tags,
@@ -48,8 +49,9 @@ type duplicateScopeOptions struct {
 }
 
 type noteFields struct {
-	Front string `json:"Front"`
-	Back  string `json:"Back"`
+	Front   string `json:"Front"`
+	Back    string `json:"Back"`
+	Example string `json:"Example"`
 }
 
 type NoteMedia struct {
@@ -135,6 +137,10 @@ type NoteInfoResult struct {
 			Order int    `json:"order"`
 			Value string `json:"value"`
 		} `json:"Back"`
+		Example struct {
+			Order int    `json:"order"`
+			Value string `json:"value"`
+		} `json:"Example"`
 	} `json:"fields"`
 	Cards []int `json:"cards"`
 }

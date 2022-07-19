@@ -13,8 +13,28 @@ import (
 type QueryResult struct {
 	Query       string
 	Description string
+	Examples    examples
 	AudioURL    string
 	Level       int
+}
+
+type example struct {
+	En, Ja string
+}
+
+type examples []*example
+
+func (exx examples) String() string {
+	var result string
+	for i, ex := range exx {
+		result += fmt.Sprintf("<strong>%s</strong>: %s", ex.En, ex.Ja)
+
+		if len(exx) != i+1 {
+			result += "<br>"
+		}
+	}
+
+	return result
 }
 
 func Query(ctx context.Context, query string) (*QueryResult, error) {
@@ -41,13 +61,17 @@ func Query(ctx context.Context, query string) (*QueryResult, error) {
 		fmt.Printf("weblio: Query: failed get level: %s: %s", r.Query, err)
 	}
 
+	if r.Examples = getExamples(doc); len(r.Examples) == 0 {
+		fmt.Printf("weblio: Query: failed get example: %s", r.Query)
+	}
+
 	return r, nil
 }
 
 func getQuery(doc *html.Node) string {
-	queryElem := htmlquery.FindOne(doc, "//*[@id=\"h1Query\"]")
-	if queryElem != nil {
-		return htmlquery.InnerText(queryElem)
+	queryNode := htmlquery.FindOne(doc, "//*[@id=\"h1Query\"]")
+	if queryNode != nil {
+		return htmlquery.InnerText(queryNode)
 	}
 
 	return ""
@@ -56,46 +80,80 @@ func getQuery(doc *html.Node) string {
 func getDescription(doc *html.Node) (desc string) {
 	defer func() {
 		if desc != "" {
-			fmt.Println(desc)
 			desc = strings.TrimSpace(desc)
-			fmt.Println(desc)
 		}
 	}()
 
-	descElem := htmlquery.FindOne(doc, "//*[@id=\"summary\"]/div[2]/p/span[2]")
-	if descElem != nil {
-		desc = htmlquery.InnerText(descElem)
+	descNode := htmlquery.FindOne(doc, "//*[@id=\"summary\"]/div[2]/p/span[2]")
+	if descNode != nil {
+		desc = htmlquery.InnerText(descNode)
 	}
 
-	descElem = htmlquery.FindOne(doc, "//*[@id=\"summary\"]/div[2]/p[2]/span")
-	if descElem != nil {
-		desc = htmlquery.InnerText(descElem)
+	descNode = htmlquery.FindOne(doc, "//*[@id=\"summary\"]/div[2]/p[2]/span")
+	if descNode != nil {
+		desc = htmlquery.InnerText(descNode)
 	}
 
 	return desc
 }
 
 func getAudioURL(doc *html.Node) string {
-	audioElem := htmlquery.FindOne(doc, "//*[@id=\"summary\"]/table[1]/tbody/tr/td[2]/table/tbody/tr[1]/td[1]/i/audio/source")
-	if audioElem != nil {
-		return htmlquery.SelectAttr(audioElem, "src")
+	audioNode := htmlquery.FindOne(doc, "//*[@id=\"summary\"]/table[1]/tbody/tr/td[2]/table/tbody/tr[1]/td[1]/i/audio/source")
+	if audioNode != nil {
+		return htmlquery.SelectAttr(audioNode, "src")
 	}
 
 	return ""
 }
 
 func getLevel(doc *html.Node) (int, error) {
-	levelElem := htmlquery.FindOne(doc, "//*[@id=\"learning-level-table\"]/div/span[1]/span[3]")
-	if levelElem != nil {
-		levelStr := htmlquery.InnerText(levelElem)
-
-		level, err := strconv.Atoi(levelStr)
-		if err != nil {
-			return 0, err
-		}
-
-		return level, nil
+	levelNode := htmlquery.FindOne(doc, "//*[@id=\"learning-level-table\"]/div/span[1]/span[3]")
+	if levelNode == nil {
+		return 0, nil
 	}
 
-	return 0, nil
+	levelStr := htmlquery.InnerText(levelNode)
+	level, err := strconv.Atoi(levelStr)
+	if err != nil {
+		return 0, err
+	}
+
+	return level, nil
+}
+
+func getExamples(doc *html.Node) examples {
+	exx := examples{}
+
+	exampleNodes := htmlquery.Find(doc, "//*[contains(concat(' ',@class,' '),' KejjeYrLn ')]")
+
+	for _, e := range exampleNodes {
+		var en, ja string
+
+		enNode := e.FirstChild
+		jaNode := e.LastChild
+
+		for _, a := range enNode.Attr {
+			if a.Val != "KejjeYrEn" {
+				continue
+			}
+
+			for wordNode := enNode.FirstChild; wordNode != nil; wordNode = wordNode.NextSibling {
+				en += htmlquery.InnerText(wordNode)
+			}
+		}
+
+		for _, a := range jaNode.Attr {
+			if a.Val != "KejjeYrJp" {
+				continue
+			}
+
+			for wordNode := jaNode.FirstChild; wordNode != nil; wordNode = wordNode.NextSibling {
+				ja += htmlquery.InnerText(wordNode)
+			}
+		}
+
+		exx = append(exx, &example{en, ja})
+	}
+
+	return exx
 }
