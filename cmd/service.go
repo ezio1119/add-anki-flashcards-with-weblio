@@ -54,8 +54,8 @@ func addWords(ctx context.Context, words []string) error {
 		}
 	}
 
-	wg := errgroup.Group{}
-	wg.SetLimit(10)
+	eg := errgroup.Group{}
+	eg.SetLimit(10)
 
 	newNotes := []*anki.Note{}
 	failedQueryWords := []string{}
@@ -64,49 +64,28 @@ func addWords(ctx context.Context, words []string) error {
 		i := i
 		w := w
 
-		wg.Go(func() error {
-			ctx, cancel := context.WithTimeout(ctx, time.Microsecond*5)
+		eg.Go(func() error {
+			ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 			defer cancel()
 
-			result, err := weblio.Query(ctx, w)
+			note, err := getNoteFromWeblio(ctx, w)
 			if err != nil {
-				fmt.Printf("addWords: failed query %s\n", w)
+				fmt.Println(err)
 				failedQueryWords = append(failedQueryWords, w)
-				return nil
-			}
-
-			front := result.Query
-			var tags []string
-			if result.Level != 0 {
-				tags = append(tags, strconv.Itoa(result.Level))
-			}
-
-			note := anki.NewNote(front, result.Description, tags, result.Examples.String())
-
-			if result.AudioURL != "" {
-				audio := &anki.NoteMedia{
-					URL:      result.AudioURL,
-					Filename: front,
-					Fields:   []string{"Front"},
-				}
-
-				note.Audio = append(note.Audio, audio)
+				return err
 			}
 
 			newNotes = append(newNotes, note)
 
 			fmt.Printf("querying weblio... %d/%d\n", i+1, len(notExistsWords))
-
 			return nil
 		})
 	}
 
-	if err := wg.Wait(); err != nil {
-		return err
-	}
+	eg.Wait()
 
 	if len(newNotes) != 0 {
-		if err := addNotesAnki(ctx, newNotes); err != nil {
+		if err := anki.Multi(ctx, anki.NewAddNotesAction(newNotes), anki.NewSyncAction()); err != nil {
 			return err
 		}
 	}
@@ -136,6 +115,28 @@ func findExistsNotesFromWords(ctx context.Context, notes anki.Notes, words []str
 	return existsNotes, nil
 }
 
+func getNoteFromWeblio(ctx context.Context, w string) (*anki.Note, error) {
+	result, err := weblio.Query(ctx, w)
+	if err != nil {
+		return nil, err
+	}
+
+	front := result.Query
+	var tags []string
+	if result.Level != 0 {
+		tags = append(tags, strconv.Itoa(result.Level))
+	}
+
+	note := anki.NewNote(front, result.Description, tags, result.Examples.String())
+
+	if result.AudioURL != "" {
+		audio := anki.NewNoteMedia(result.AudioURL, front, "Front")
+		note.Audio = append(note.Audio, audio)
+	}
+
+	return note, nil
+}
+
 func removeAnkiDupNotes(ctx context.Context, notes []*anki.Note) ([]*anki.Note, error) {
 	if err := anki.CanAddNotes(ctx, notes); err != nil {
 		return nil, err
@@ -161,27 +162,6 @@ func removeAnkiDupNotes(ctx context.Context, notes []*anki.Note) ([]*anki.Note, 
 	}
 
 	return newNotes, nil
-}
-
-func addNotesAnki(ctx context.Context, notes []*anki.Note) error {
-	actions := make([]*anki.Action, 2)
-
-	addNotesAction := &anki.Action{
-		Action: "addNotes",
-		Params: &anki.AddNotesParams{Notes: notes},
-	}
-	actions[0] = addNotesAction
-
-	syncAction := &anki.Action{Action: "sync"}
-	actions[1] = syncAction
-
-	multiParams := &anki.MultiParams{Actions: actions}
-
-	if err := anki.Multi(ctx, multiParams); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func outputNotes(notes anki.Notes) {

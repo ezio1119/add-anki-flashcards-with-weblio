@@ -9,7 +9,7 @@ import (
 func FindNotes(ctx context.Context) ([]NoteID, error) {
 	query := fmt.Sprintf("deck:%s", deckName)
 
-	res, err := requestAPI(ctx, "findNotes", &FindNotesParams{Query: query})
+	res, err := requestAPI(ctx, "findNotes", &findNotesParams{Query: query})
 	if err != nil {
 		fmt.Println("aa")
 		return nil, err
@@ -25,21 +25,21 @@ func FindNotes(ctx context.Context) ([]NoteID, error) {
 }
 
 func NotesInfo(ctx context.Context, noteIDs []NoteID) (Notes, error) {
-	res, err := requestAPI(ctx, "notesInfo", &NotesInfoParams{NoteIDs: noteIDs})
+	res, err := requestAPI(ctx, "notesInfo", &notesInfoParams{NoteIDs: noteIDs})
 	if err != nil {
 		return nil, err
 	}
 
-	notesInfo := []*NoteInfoResult{}
-	if err := json.Unmarshal(res.Result, &notesInfo); err != nil {
+	result := []*noteInfoResult{}
+	if err := json.Unmarshal(res.Result, &result); err != nil {
 		return nil, err
 	}
 
-	notes := make(Notes, len(notesInfo))
+	notes := make(Notes, len(result))
 
-	for i, n := range notesInfo {
+	for i, r := range result {
+		note := NewNote(r.Fields.Front.Value, r.Fields.Back.Value, r.Tags, r.Fields.Example.Value)
 
-		note := NewNote(n.Fields.Front.Value, n.Fields.Back.Value, n.Tags, n.Fields.Example.Value)
 		note.Exists = true
 		notes[i] = note
 	}
@@ -48,7 +48,7 @@ func NotesInfo(ctx context.Context, noteIDs []NoteID) (Notes, error) {
 }
 
 func AddNotes(ctx context.Context, notes Notes) error {
-	_, err := requestAPI(ctx, "addNotes", &AddNotesParams{notes})
+	_, err := requestAPI(ctx, "addNotes", &addNotesParams{notes})
 	return err
 }
 
@@ -57,13 +57,13 @@ func Sync(ctx context.Context) error {
 	return err
 }
 
-func Multi(ctx context.Context, params *MultiParams) error {
-	_, err := requestAPI(ctx, "multi", params)
+func Multi(ctx context.Context, actions ...*action) error {
+	_, err := requestAPI(ctx, "multi", &multiParams{actions})
 	return err
 }
 
 func CanAddNotes(ctx context.Context, notes Notes) error {
-	res, err := requestAPI(ctx, "canAddNotes", &CanAddNotesParams{notes})
+	res, err := requestAPI(ctx, "canAddNotes", &canAddNotesParams{notes})
 	if err != nil {
 		return err
 	}

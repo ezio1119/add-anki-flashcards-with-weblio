@@ -31,9 +31,9 @@ type Note struct {
 	Fields    *noteFields  `json:"fields"`
 	Options   *noteOptions `json:"options,omitempty"`
 	Tags      []string     `json:"tags,omitempty"`
-	Audio     []*NoteMedia `json:"audio,omitempty"`
-	Video     []*NoteMedia `json:"video,omitempty"`
-	Picture   []*NoteMedia `json:"picture,omitempty"`
+	Audio     []*noteMedia `json:"audio,omitempty"`
+	Video     []*noteMedia `json:"video,omitempty"`
+	Picture   []*noteMedia `json:"picture,omitempty"`
 
 	Exists bool `json:"-"`
 }
@@ -49,16 +49,24 @@ type duplicateScopeOptions struct {
 }
 
 type noteFields struct {
-	Front   string `json:"Front"`
-	Back    string `json:"Back"`
-	Example string `json:"Example"`
+	Front   string `json:"Front,omitempty"`
+	Back    string `json:"Back,omitempty"`
+	Example string `json:"Example,omitempty"`
 }
 
-type NoteMedia struct {
+type noteMedia struct {
 	URL      string   `json:"url"`
 	Filename string   `json:"filename"`
-	SkipHash string   `json:"skipHash"`
+	SkipHash string   `json:"skipHash,omitempty"`
 	Fields   []string `json:"fields"`
+}
+
+func NewNoteMedia(url, Filename string, fields ...string) *noteMedia {
+	return &noteMedia{
+		URL:      url,
+		Filename: Filename,
+		Fields:   fields,
+	}
 }
 
 type Notes []*Note
@@ -95,36 +103,56 @@ func (notes Notes) ListWords() []string {
 	return words
 }
 
-type Action struct {
+type action struct {
 	Action string      `json:"action"`
 	Params interface{} `json:"params,omitempty"`
 }
 
-type FindNotesParams struct {
+func NewSyncAction() *action {
+	return &action{Action: "sync"}
+}
+
+func NewAddNotesAction(notes Notes) *action {
+	return &action{
+		Action: "addNotes",
+		Params: &addNotesParams{
+			Notes: notes,
+		},
+	}
+}
+
+type findNotesParams struct {
 	Query string `json:"query"`
 }
 
-type NotesInfoParams struct {
+type notesInfoParams struct {
 	NoteIDs []NoteID `json:"notes"`
 }
 
-type AddNotesParams struct {
+type addNotesParams struct {
 	Notes Notes `json:"notes"`
 }
 
-type MultiParams struct {
-	Actions []*Action `json:"actions"`
+type multiParams struct {
+	Actions []*action `json:"actions"`
 }
 
-type CanAddNotesParams struct {
+type canAddNotesParams struct {
 	Notes Notes `json:"notes"`
+}
+
+type updateNoteFieldsParams struct {
+	Note *struct {
+		ID     NoteID      `json:"id"`
+		Fields *noteFields `json:"fields"`
+	} `json:"note"`
 }
 
 type params interface {
-	FindNotesParams | NotesInfoParams | AddNotesParams | CanAddNotesParams | MultiParams | struct{}
+	findNotesParams | notesInfoParams | addNotesParams | canAddNotesParams | multiParams | updateNoteFieldsParams | struct{}
 }
 
-type NoteInfoResult struct {
+type noteInfoResult struct {
 	NoteID    NoteID   `json:"noteId"`
 	ModelName string   `json:"modelName"`
 	Tags      []string `json:"tags"`

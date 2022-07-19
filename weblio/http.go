@@ -41,11 +41,29 @@ func Query(ctx context.Context, query string) (*QueryResult, error) {
 	r := &QueryResult{
 		Query: query,
 	}
-
 	url := fmt.Sprintf("https://ejje.weblio.jp/content/%s", r.Query)
-	doc, err := htmlquery.LoadURL(url)
-	if err != nil {
-		return nil, err
+
+	var doc *html.Node
+	docChan := make(chan *html.Node)
+	errChan := make(chan error)
+
+	go func() {
+		doc, err := htmlquery.LoadURL(url)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		docChan <- doc
+	}()
+
+	select {
+	case doc = <-docChan:
+
+	case err := <-errChan:
+		return nil, fmt.Errorf("weblio: Query: failed load url: %s: %w", r.Query, err)
+
+	case <-ctx.Done():
+		return nil, fmt.Errorf("weblio: Query: failed load url: %s: %w", r.Query, ctx.Err())
 	}
 
 	if r.Description = getDescription(doc); r.Description == "" {
@@ -56,6 +74,7 @@ func Query(ctx context.Context, query string) (*QueryResult, error) {
 		fmt.Printf("weblio: Query: failed get audioURL: %s", r.Query)
 	}
 
+	var err error
 	r.Level, err = getLevel(doc)
 	if err != nil || r.Level == 0 {
 		fmt.Printf("weblio: Query: failed get level: %s: %s", r.Query, err)
@@ -150,6 +169,10 @@ func getExamples(doc *html.Node) examples {
 			for wordNode := jaNode.FirstChild; wordNode != nil; wordNode = wordNode.NextSibling {
 				ja += htmlquery.InnerText(wordNode)
 			}
+		}
+
+		if en == "" || ja == "" {
+			continue
 		}
 
 		exx = append(exx, &example{en, ja})
